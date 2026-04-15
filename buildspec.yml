@@ -11,9 +11,7 @@ phases:
 
   pre_build:
     commands:
-      - echo "Running pre-build checks"
-      - npm run lint:ci
-      - npm run test
+      - echo "Skipping tests (handled by GitHub Actions CI)"
       - echo "Pre-build checks passed"
 
   build:
