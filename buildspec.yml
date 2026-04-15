@@ -34,7 +34,7 @@ phases:
       - cp pm2/ecosystem.config.js dist/
       - cd dist && zip -r ../artifact.zip . && cd ..
       - echo "Uploading artifact to S3"
-      - aws s3 cp artifact.zip "s3://my-app-build-artifacts/${S3_ARTIFACT_KEY}"
+      - aws s3 cp artifact.zip "s3://my-app-build-artifacts-node/${S3_ARTIFACT_KEY}"
       - echo "BUILD_VERSION=${BUILD_VERSION}" >> build.env
       - echo "S3_ARTIFACT_KEY=${S3_ARTIFACT_KEY}" >> build.env
       - echo "BUILD SUCCESSFUL"
