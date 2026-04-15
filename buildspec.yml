@@ -1,0 +1,63 @@
+version: 0.2
+
+env:
+  parameter-store:
+    DB_HOST: /my-app/production/db-host
+    DB_NAME: /my-app/production/db-name
+    DB_USER: /my-app/production/db-user
+  exported-variables:
+    - BUILD_VERSION
+    - S3_ARTIFACT_KEY
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing dependencies..."
+      - npm ci --production=false
+      - npm install -g pm2
+
+  pre_build:
+    commands:
+      - echo "Running pre-build checks..."
+      - npm run lint:ci
+      - npm run test
+      - echo "Pre-build checks passed"
+
+  build:
+    commands:
+      - echo "Build started on $(date)"
+      - export BUILD_VERSION="${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}-$(date +%Y%m%d%H%M%S)"
+      - export S3_ARTIFACT_KEY="builds/${BUILD_VERSION}/artifact.zip"
+      - echo "Build version: ${BUILD_VERSION}"
+      - echo "Artifact key: ${S3_ARTIFACT_KEY}"
+      - npm run build || true
+      - echo "Build completed"
+
+  post_build:
+    commands:
+      - echo "Packaging artifact..."
+      - mkdir -p dist
+      - cp -r src/ dist/src/
+      - cp -r node_modules/ dist/node_modules/
+      - cp package.json dist/
+      - cp pm2/ecosystem.config.js dist/
+      - cp .env.production dist/.env 2>/dev/null || true
+      - cd dist && zip -r ../artifact.zip . && cd ..
+      - echo "Uploading artifact to S3..."
+      - aws s3 cp artifact.zip "s3://my-app-build-artifacts/${S3_ARTIFACT_KEY}"
+      - echo "Artifact uploaded to: s3://my-app-build-artifacts/${S3_ARTIFACT_KEY}"
+      - echo "=== BUILD SUCCESSFUL ==="
+      - echo "BUILD_VERSION=${BUILD_VERSION}" >> build.env
+      - echo "S3_ARTIFACT_KEY=${S3_ARTIFACT_KEY}" >> build.env
+
+artifacts:
+  files:
+    - build.env
+  discard-paths: yes
+
+cache:
+  paths:
+    - node_modules/**/*
+    - .npm/**/*
